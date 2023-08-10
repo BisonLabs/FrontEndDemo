@@ -1,0 +1,51 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap");
+body {
+  margin: 0;
+  line-height: normal;
+}
+:root {
+  /* fonts */
+  --paragraph-p12-medium: Inter;
+  --font-poppins: Poppins;
+
+  /* font sizes */
+  --font-size-5xl: 24px;
+  --font-size-xs-7: 11.7px;
+  --font-size-xl: 20px;
+  --paragraph-p16-medium-size: 16px;
+  --font-size-sm: 14px;
+  --paragraph-p12-medium-size: 12px;
+  --font-size-mini: 15px;
+  --paragraph-p18-semi-bold-size: 18px;
+
+  /* Colors */
+  --text-100: #fff;
+  --color-gray-100: #262626;
+  --color-gray-200: rgba(255, 255, 255, 0.05);
+  --color-gray-300: rgba(255, 255, 255, 0.5);
+  --color-gray-400: rgba(0, 0, 0, 0);
+  --color-black: #000;
+  --color-darkslategray: #313131;
+  --color-coral: #ff7248;
+
+  /* Gaps */
+  --gap-xs-3: 11.3px;
+  --gap-11xs: 2px;
+
+  /* Paddings */
+  --padding-5xs-3: 7.3px;
+  --padding-mini-7: 14.7px;
+  --padding-3xs: 10px;
+  --padding-xs: 12px;
+  --padding-9xs: 4px;
+  --padding-3xl: 22px;
+  --padding-sm: 14px;
+  --padding-106xl: 125px;
+  --padding-5xs: 8px;
+
+  /* border radiuses */
+  --br-xl: 20px;
+  --br-xs: 12px;
+  --br-7xs: 6px;
+}
