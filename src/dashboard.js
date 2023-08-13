@@ -44,7 +44,7 @@ class Dashboard extends React.Component {
 
 
   fetchBTCRate = async () => {
-    const apiKey = "6097ECCC-363E-4CE6-9F5C-308C1BC69174";
+    const apiKey = "";
     await fetch("https://rest.coinapi.io/v1/exchangerate/BTC/USD", {
       method: "GET",
       headers: {
