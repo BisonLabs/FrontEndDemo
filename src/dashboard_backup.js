@@ -19,7 +19,7 @@ class Dashboard extends React.Component {
       btcRate: null,
       btcValue: null,
       zkbtValue: null,
-      swapAmount: "",
+      swapAmount: "1",
       btcBalance: ""
     };
     this.balanceInterval = null; // Initialize balance interval
@@ -44,7 +44,7 @@ class Dashboard extends React.Component {
 
 
   fetchBTCRate = async () => {
-    const apiKey = "6097ECCC-363E-4CE6-9F5C-308C1BC69174";
+    const apiKey = "";
     await fetch("https://rest.coinapi.io/v1/exchangerate/BTC/USD", {
       method: "GET",
       headers: {
@@ -307,194 +307,200 @@ class Dashboard extends React.Component {
                 </div>
               </div>
 
-            <div className="group-div">
-              <div className="quick-transfer-parent">
-                <div className="quick-transfer">Quick Transfer</div>
-                <div className="frame-parent1">
-                  <div className="address-trevorbtc-wrapper">
-                    <input
-                      type="text"
-                      className="address-trevorbtc"
-                      value={this.state.receiptAddress}
-                      onChange={(e) => this.setState({ receiptAddress: e.target.value })}
-                      placeholder="Address"
-                    />
-                  </div>
-                  <div className="amount-69-parent">
-                    <input
-                      type="number"
-                      className="amount-69"
-                      value={this.state.amount}
-                      onChange={(e) => this.setState({ amount: e.target.value })}
-                      placeholder="Amount"
-                    />
-                    <div className="zkbt-container">
-                      <div className="zkbt1">zkbt</div>
-                      <img
-                        className="iconlylightarrow-down-2"
-                        alt=""
-                        src="/iconlylightarrow--down-2.svg"
+              <div className="group-div">
+                <div className="quick-transfer-parent">
+                  <div className="quick-transfer">Quick Transfer</div>
+                  <div className="frame-parent1">
+                    <div className="address-trevorbtc-wrapper">
+                      <input
+                        type="text"
+                        className="address-trevorbtc"
+                        value={this.state.receiptAddress}
+                        onChange={(e) => this.setState({ receiptAddress: e.target.value })}
+                        placeholder="Address"
                       />
                     </div>
+                    <div className="amount-69-parent">
+                      <input
+                        type="number"
+                        className="amount-69"
+                        value={this.state.amount}
+                        onChange={(e) => this.setState({ amount: e.target.value })}
+                        placeholder="Amount"
+                      />
+                      <div className="zkbt-container">
+                        <div className="zkbt1">zkbt</div>
+                        <img
+                          className="iconlylightarrow-down-2"
+                          alt=""
+                          src="/iconlylightarrow--down-2.svg"
+                        />
+                      </div>
+                    </div>
+                    <div className="text">{`         `}</div>
                   </div>
-                  <div className="text">{`         `}</div>
-                </div>
-                <div className="send-parent">
-                  <div className="send" />
-                  <img
-                    className="iconlylight-outlinesend"
-                    alt=""
-                    src="/iconlylight-outlinesend.svg"
-                  />
-                  <button
-                    className="transfer-now"
-                    onClick={this.onSignAndSendMessageClick}
-                  >         Transfer Now
-                  </button>
+                  <div className="send-parent">
+                    <div className="send" />
+                    <img
+                      className="iconlylight-outlinesend"
+                      alt=""
+                      src="/iconlylight-outlinesend.svg"
+                    />
+                    <button
+                      className="transfer-now"
+                      onClick={this.onSignAndSendMessageClick}
+                    >         Transfer Now
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
 
 
 
-            <div className="nav-bar">
-              <div className="my-order-wrapper">
-                <div className="my-order">Network Overview</div>
-              </div>
-              <div className="wallet">Wallet</div>
-              <div className="news-wrapper">
-                <div className="news">
-                  <div className="see-more" />
-                  <img
-                    className="wallet-line-icon"
-                    alt=""
-                    src="/walletline.svg"
-                  />
+              <div className="nav-bar">
+                <div className="my-order-wrapper">
+                  <div className="my-order">Network Overview</div>
                 </div>
-              </div>
-            </div>
-            <div className="rectangle-parent">
-              <div className="rectangle-div" onClick={this.onConnectClick} />
-              <div className="connect-wallet1" >{`       Connect Wallet `}</div>
-            </div>
-            <div className="wallet-line">
-              <img className="vector-icon" alt="" src="/vector.svg" />
-            </div>
-            <div className="balance">Balance</div>
-            <div className="div">${totalValue ? totalValue.toFixed(2) : 'Loading...'}</div>
-            <div className="col-02-parent">
-              <div className="col-02">
-                <div className="table-item">
-                  <div className="name">#</div>
-                </div>
-                <div className="table-item1">
-                  <div className="my-order">1</div>
-                </div>
-                <div className="table-item2">
-                  <div className="my-order">2</div>
-                </div>
-                <div className="table-item2">
-                  <div className="my-order">3</div>
-                </div>
-              </div>
-              <div className="col-021">
-                <div className="table-item4">
-                  <div className="name">Name</div>
-                </div>
-                <div className="table-item5">
-                  <img className="image-1-icon" alt="" src="/image-1@2x.png" />
-                  <div className="bitcoin-wrapper">
-                    <div className="portfolio-positions">Bitcoin</div>
-                  </div>
-                </div>
-                <div className="table-item5">
-                  <img
-                    className="table-item-child"
-                    alt=""
-                    src="/ellipse-261@2x.png"
-                  />
-                  <div className="bitcoin-wrapper">
-                    <div className="portfolio-positions">Bison</div>
-                  </div>
-                </div>
-                <div className="table-item5">
-                  <img
-                    className="image-22-icon"
-                    alt=""
-                    src="/image-22@2x.png"
-                  />
-                  <div className="bitcoin-wrapper">
-                    <div className="portfolio-positions">zkbt</div>
+                <div className="wallet">Wallet</div>
+                <div className="news-wrapper">
+                  <div className="news">
+                    <div className="see-more" />
+                    <img
+                      className="wallet-line-icon"
+                      alt=""
+                      src="/walletline.svg"
+                    />
                   </div>
                 </div>
               </div>
-              <div className="col-05">
-                <div className="table-item4">
-                  <div className="portfolio-positions">
-                    <span className="balance2">Balance</span>
-                    <span className="span1">{` `}</span>
+              <div className="rectangle-parent" onClick={this.onConnectClick}>
+                <div className="rectangle-div">
+                  <div className="connect-wallet1">Connect Wallet</div>
+                </div>
+              </div>
+
+              <div className="wallet-line">
+                <img className="vector-icon" alt="" src="/vector.svg" />
+              </div>
+              <div className="balance">Balance</div>
+              <div className="div">{totalValue ? `$${totalValue.toFixed(2)}` : 'Loading...'}</div>
+
+              <div className="col-02-parent">
+                <div className="col-02">
+                  <div className="table-item">
+                    <div className="name">#</div>
+                  </div>
+                  <div className="table-item1">
+                    <div className="my-order">1</div>
+                  </div>
+                  <div className="table-item2">
+                    <div className="my-order">2</div>
+                  </div>
+                  <div className="table-item2">
+                    <div className="my-order">3</div>
                   </div>
                 </div>
-                <div className="table-item9">
-                  <div className="portfolio-positions">{this.state.btcBalance} btc</div>
-                </div>
-                <div className="table-item9">
-                  <div className="portfolio-positions">0 bison</div>
-                </div>
-                <div className="table-item9">
-                  <div className="portfolio-positions">{this.state.balance} zkbt</div>
-                </div>
-              </div>
-              <div className="col-051">
-                <div className="table-item4">
-                  <div className="portfolio-positions">
-                    <span className="balance2">Balance</span>
-                    <span className="span1">{` `}</span>
+                <div className="col-021">
+                  <div className="table-item4">
+                    <div className="name">Name</div>
+                  </div>
+                  <div className="table-item5">
+                    <img className="image-1-icon" alt="" src="/image-1@2x.png" />
+                    <div className="bitcoin-wrapper">
+                      <div className="portfolio-positions">Bitcoin</div>
+                    </div>
+                  </div>
+                  <div className="table-item5">
+                    <img
+                      className="table-item-child"
+                      alt=""
+                      src="/ellipse-261@2x.png"
+                    />
+                    <div className="bitcoin-wrapper">
+                      <div className="portfolio-positions">Bison</div>
+                    </div>
+                  </div>
+                  <div className="table-item5">
+                    <img
+                      className="image-22-icon"
+                      alt=""
+                      src="/image-22@2x.png"
+                    />
+                    <div className="bitcoin-wrapper">
+                      <div className="portfolio-positions">zkbt</div>
+                    </div>
                   </div>
                 </div>
-                <div className="table-item9">
-                  <div className="portfolio-positions">{this.state.btcBalance} btc</div>
+                <div className="col-05">
+                  <div className="table-item4">
+                    <div className="portfolio-positions">
+                      <span className="balance2">Balance</span>
+                      <span className="span1">{` `}</span>
+                    </div>
+                  </div>
+                  <div className="table-item9">
+                    <div className="portfolio-positions">{this.state.btcBalance} btc</div>
+                  </div>
+                  <div className="table-item9">
+                    <div className="portfolio-positions">0 Bison</div>
+                  </div>
+                  <div className="table-item9">
+                    <div className="portfolio-positions">{this.state.balance} zkbt</div>
+                  </div>
                 </div>
-                <div className="table-item9">
-                  <div className="portfolio-positions">0 bison</div>
+                <div className="col-051">
+                  <div className="table-item4">
+                    <div className="portfolio-positions">
+                      <span className="balance2">Balance</span>
+                      <span className="span1">{` `}</span>
+                    </div>
+                  </div>
+                  <div className="table-item9">
+                    <div className="portfolio-positions">{this.state.btcBalance ? `${this.state.btcBalance} btc` : '0 btc'}</div>
+                  </div>
+                  <div className="table-item9">
+                    <div className="portfolio-positions">0 Bison</div>
+                  </div>
+                  <div className="table-item9">
+                    <div className="portfolio-positions">{this.state.balance ? `${this.state.balance} zkbt` : '0 zkbt'}</div>
+                  </div>
+
                 </div>
-                <div className="table-item9">
-                  <div className="portfolio-positions">{this.state.balance} zkbt</div>
+              </div>
+              <div className="sub-menu">
+                <div className="swap-wrapper">
+                  <div className="my-order">Swap</div>
+                </div>
+                <div className="swap-wrapper">
+                  <div className="send2">Send</div>
+                </div>
+                <div className="swap-wrapper">
+                  <div className="my-order">Bridge</div>
                 </div>
               </div>
+              <img className="bisonlogo-icon" alt="" src="/bisonlogo@2x.png" />
             </div>
-            <div className="sub-menu">
-              <div className="swap-wrapper">
-                <div className="my-order">Swap</div>
+            <div className="col-052">
+              <div className="table-item16">
+                <div className="portfolio-positions">
+                  <span className="balance2">Value</span>
+                  <span className="span1">{` `}</span>
+                </div>
               </div>
-              <div className="swap-wrapper">
-                <div className="send2">Send</div>
+              <div className="table-item17">
+                <div className="portfolio-positions">{btcValue !== null ? `$${btcValue.toFixed(2)}` : 'Loading...'}</div>
               </div>
-              <div className="swap-wrapper">
-                <div className="my-order">Bridge</div>
+
+              <div className="table-item18">
+                <div className="portfolio-positions">{this.state.paymentAddress ? '$0.00' : 'Loading...'}</div>
               </div>
-            </div>
-            <img className="bisonlogo-icon" alt="" src="/bisonlogo@2x.png" />
-          </div>
-          <div className="col-052">
-            <div className="table-item16">
-              <div className="portfolio-positions">
-                <span className="balance2">Value</span>
-                <span className="span1">{` `}</span>
+              <div className="table-item19">
+                <div className="portfolio-positions">{zkbtValue ? `$${zkbtValue.toFixed(2)}` : 'Loading...'}</div>
               </div>
-            </div>
-            <div className="table-item17">
-              <div className="portfolio-positions">${btcValue ? btcValue.toFixed(2) : 'Loading...'}</div>
-            </div>
-            <div className="table-item18">
-              <div className="portfolio-positions">{ordinalsAddress ? '$0' : 'Loading...'}</div>
-            </div>
-            <div className="table-item19">
-              <div className="portfolio-positions">${zkbtValue ? zkbtValue.toFixed(2) : 'Loading...'}</div>
+
             </div>
           </div>
         </div>
-      </div>
       </div>
 
     );

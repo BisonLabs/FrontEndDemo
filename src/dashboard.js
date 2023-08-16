@@ -19,32 +19,78 @@ class Dashboard extends React.Component {
       btcRate: null,
       btcValue: null,
       zkbtValue: null,
-      swapAmount: "1",
-      btcBalance: ""
+      swapAmount: 1,
+      btcBalance: "",
+      amount2: 0,
+      quoteID: ""
     };
     this.balanceInterval = null; // Initialize balance interval
-
+    this.getQuote = this.getQuote.bind(this);
   }
 
+  
   componentDidMount() {
-    // Set interval to update BTC balance every 3 seconds
+    this.quoteCounter = 0; // 用于跟踪报价刷新的计数器
+  
+    // 每1分钟更新BTC余额和报价，但仅当页面处于焦点状态时
     this.balanceInterval = setInterval(() => {
-      this.fetchBTCSum(this.state.ordinalsAddress);
+      if (document.visibilityState === 'visible') {
+        if (this.quoteCounter % 20 === 0) {
+          this.fetchBTCSum(this.state.ordinalsAddress);
+          this.getQuote();
+        }
+        this.quoteCounter++;
+      }
     }, 3000);
+  
+    // 监听visibilitychange事件，页面重新聚焦时立即更新
+    document.addEventListener('visibilitychange', this.handleVisibilityChange);
+  }
+  
+  handleVisibilityChange = () => {
+    if (document.visibilityState === 'visible') {
+      this.fetchBTCSum(this.state.ordinalsAddress);
+      this.getQuote();
+    }
+  }
+  
+  componentWillUnmount() {
+    clearInterval(this.balanceInterval);
+    document.removeEventListener('visibilitychange', this.handleVisibilityChange);
   }
 
-  componentWillUnmount() {
-    // Clear interval when component unmounts
-    clearInterval(this.balanceInterval);
+  async getQuote() {
+    const { swapAmount } = this.state;
+    const response = await fetch("http://localhost:8000/quote", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        tick1: "zkbt",
+        tick2: "fast",
+        contractAddress1: "tb1pam7razjc7647hthazkqzlycm78hr2ety0cxqaktc3suywm03x56s8y4hmg",
+        contractAddress2: "tb1phvax6ecszcyp34txjy9h0k2cflyk9c0ue66p894vxddzjsf4uu8ssdu9pa",
+        amount1: swapAmount,
+      }),
+    });
+    const data = await response.json();
+    this.setState({ amount2: data.amount2, quoteID: data.id });
   }
+  
 
   handleSwapAmountChange = (e) => {
-    this.setState({ swapAmount: e.target.value });
+    const swapAmount = e.target.value;
+  
+    this.setState({ swapAmount }, () => {
+      // 在设置完状态后获取新的quote
+      this.getQuote();
+    });
   };
 
 
   fetchBTCRate = async () => {
-    const apiKey = "";
+    const apiKey = "6097ECCC-363E-4CE6-9F5C-308C1BC69174";
     await fetch("https://rest.coinapi.io/v1/exchangerate/BTC/USD", {
       method: "GET",
       headers: {
@@ -79,7 +125,7 @@ class Dashboard extends React.Component {
 
   fetchBalance = async (ordinalsAddress) => {
     // Fetch the balance
-    await fetch("http://192.168.1.96:5000/balance", {
+    await fetch("http://209.141.49.238:5000/balance", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -123,18 +169,30 @@ class Dashboard extends React.Component {
   };
 
   handleSwapClick = async () => {
-    const { ordinalsAddress, swapAmount } = this.state;
-    const receiptAddress = "tb1ptw39pxy2stdlexwutfjwak7c8u6tnzut80dtwt8fmqfdzpd60nfqsejr7m";
-    const amount = swapAmount; // Amount entered by the user for swap
+    const { ordinalsAddress, swapAmount, quoteID } = this.state;
+    const amount1 = swapAmount; // Amount entered by the user for swap
+    const amount2 = amount1; // Same as amount1
+    const tick1 = "zkbt";
+    const tick2 = "fast";
+    const expiry = new Date(new Date().getTime() + 1 * 60000).toISOString(); // Current time + 1 minute
+    const contractAddress1 = "tb1pam7razjc7647hthazkqzlycm78hr2ety0cxqaktc3suywm03x56s8y4hmg";
+    const contractAddress2 = "tb1phvax6ecszcyp34txjy9h0k2cflyk9c0ue66p894vxddzjsf4uu8ssdu9pa"; 
 
     const messageObj = {
-      method: "transfer",
-      sAddr: ordinalsAddress,
-      rAddr: receiptAddress,
-      amt: amount,
-      tick: "zkbt",
-      sig: ""
+      method: "swap",
+      quoteID: quoteID, // 加入quoteID
+      expiry: expiry,
+      tick1: tick1,
+      contractAddress1: contractAddress1,
+      amount1: amount1,
+      tick2: tick2,
+      contractAddress2: contractAddress2,
+      amount2: amount2,
+      makerAddr: ordinalsAddress, 
+      takerAddr: "", 
+      // makerSig  and takerSig will be added later 
     };
+    
 
     const signMessageOptions = {
       payload: {
@@ -145,18 +203,31 @@ class Dashboard extends React.Component {
         message: JSON.stringify(messageObj),
       },
       onFinish: (response) => {
-        messageObj.sig = response;
-        this.onSendMessageClick(messageObj); // You can keep this method as is
+        messageObj.makerSig = response; // Embed the signature into the JSON
+        this.onSwapMessageClick(messageObj); // Sending the signed message
       },
       onCancel: () => alert("Swap canceled"),
     };
 
     await signMessage(signMessageOptions);
-    // Fetch the balance for the existing method (if needed)
-    this.fetchBalance(ordinalsAddress);
+  };
 
-    this.fetchBTCSum(ordinalsAddress);
-    this.fetchBTCRate(); // Fetch BTC rate
+  onSwapMessageClick = async (signedMessage) => {
+    // Make a HTTP POST request to the specified endpoint
+    await fetch("http://0.0.0.0:8000/swap_make", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(signedMessage),
+    })
+      .then(response => response.json())
+      .then(data => {
+        alert(JSON.stringify(data));
+      })
+      .catch((error) => {
+        console.error('Error:', error);
+      });
   };
 
   onSignAndSendMessageClick = async () => {
@@ -166,7 +237,7 @@ class Dashboard extends React.Component {
       sAddr: ordinalsAddress,
       rAddr: receiptAddress,
       amt: amount,
-      tick: "zkbt",
+      tick: "fast",
       sig: ""
     };
     const signMessageOptions = {
@@ -195,7 +266,7 @@ class Dashboard extends React.Component {
 
   onSendMessageClick = async (signedMessage) => {
     // Make a HTTP POST request
-    await fetch("http://192.168.1.96:5000/transfer", {
+    await fetch("http://192.168.254.12:5000/transfer", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -215,6 +286,8 @@ class Dashboard extends React.Component {
   render() {
     const { btcValue, zkbtValue, ordinalsAddress } = this.state;
     const totalValue = (btcValue || 0) + (zkbtValue || 0); // Add the two values
+    const amount2 = parseFloat(this.state.amount2);
+    const displayAmount2 = amount2.toFixed(0); 
     return (
       <div className="macbook-pro-16-3">
         <div className="home-page-wrapper">
@@ -287,9 +360,9 @@ class Dashboard extends React.Component {
                       </div>
                     </div>
                     <div className="btc-parent">
-                      <div className="btc">{(this.state.swapAmount / 10000).toFixed(4)}</div>
+                      <div className="btc">{displayAmount2}</div>
                       <div className="btc-group">
-                        <div className="zkbt1">btc</div>
+                        <div className="zkbt1">fast</div>
                         <img
                           className="iconlylightarrow-down-2"
                           alt=""
@@ -297,7 +370,7 @@ class Dashboard extends React.Component {
                         />
                       </div>
                     </div>
-                    <div className="zkbt-1">10000 zkbt = 1 btc</div>
+                    <div className="zkbt-1">1 zkbt = 1 fast</div>
                   </div>
                   <div className="connect-wallet-wrapper">
                     <button className="swapbutton" onClick={this.handleSwapClick}>
@@ -306,6 +379,7 @@ class Dashboard extends React.Component {
                   </div>
                 </div>
               </div>
+
 
               <div className="group-div">
                 <div className="quick-transfer-parent">
@@ -373,18 +447,15 @@ class Dashboard extends React.Component {
                   </div>
                 </div>
               </div>
-              <div className="rectangle-parent" onClick={this.onConnectClick}>
-                <div className="rectangle-div">
-                  <div className="connect-wallet1">Connect Wallet</div>
-                </div>
+              <div className="rectangle-parent">
+                <div className="rectangle-div" onClick={this.onConnectClick} />
+                <div className="connect-wallet1" >{`       Connect Wallet `}</div>
               </div>
-
               <div className="wallet-line">
                 <img className="vector-icon" alt="" src="/vector.svg" />
               </div>
               <div className="balance">Balance</div>
-              <div className="div">{totalValue ? `$${totalValue.toFixed(2)}` : 'Loading...'}</div>
-
+              <div className="div">${totalValue ? totalValue.toFixed(2) : 'Loading...'}</div>
               <div className="col-02-parent">
                 <div className="col-02">
                   <div className="table-item">
@@ -442,7 +513,7 @@ class Dashboard extends React.Component {
                     <div className="portfolio-positions">{this.state.btcBalance} btc</div>
                   </div>
                   <div className="table-item9">
-                    <div className="portfolio-positions">0 Bison</div>
+                    <div className="portfolio-positions">0 bison</div>
                   </div>
                   <div className="table-item9">
                     <div className="portfolio-positions">{this.state.balance} zkbt</div>
@@ -456,15 +527,14 @@ class Dashboard extends React.Component {
                     </div>
                   </div>
                   <div className="table-item9">
-                    <div className="portfolio-positions">{this.state.btcBalance ? `${this.state.btcBalance} btc` : '0 btc'}</div>
+                    <div className="portfolio-positions">{this.state.btcBalance} btc</div>
                   </div>
                   <div className="table-item9">
-                    <div className="portfolio-positions">0 Bison</div>
+                    <div className="portfolio-positions">0 bison</div>
                   </div>
                   <div className="table-item9">
-                    <div className="portfolio-positions">{this.state.balance ? `${this.state.balance} zkbt` : '0 zkbt'}</div>
+                    <div className="portfolio-positions">{this.state.balance} zkbt</div>
                   </div>
-
                 </div>
               </div>
               <div className="sub-menu">
@@ -488,16 +558,14 @@ class Dashboard extends React.Component {
                 </div>
               </div>
               <div className="table-item17">
-                <div className="portfolio-positions">{btcValue !== null ? `$${btcValue.toFixed(2)}` : 'Loading...'}</div>
+                <div className="portfolio-positions">${btcValue ? btcValue.toFixed(2) : 'Loading...'}</div>
               </div>
-
               <div className="table-item18">
-                <div className="portfolio-positions">{this.state.paymentAddress ? '$0.00' : 'Loading...'}</div>
+                <div className="portfolio-positions">{ordinalsAddress ? '$0' : 'Loading...'}</div>
               </div>
               <div className="table-item19">
-                <div className="portfolio-positions">{zkbtValue ? `$${zkbtValue.toFixed(2)}` : 'Loading...'}</div>
+                <div className="portfolio-positions">${zkbtValue ? zkbtValue.toFixed(2) : 'Loading...'}</div>
               </div>
-
             </div>
           </div>
         </div>
