@@ -83,7 +83,7 @@ class Dashboard extends React.Component {
     const swapAmount = e.target.value;
   
     this.setState({ swapAmount }, () => {
-      // 在设置完状态后获取新的quote
+      // Get new quote after setting state
       this.getQuote();
     });
   };
