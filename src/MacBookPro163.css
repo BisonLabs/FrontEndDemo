@@ -321,7 +321,7 @@ body {
   background-color: transparent;
   color: inherit;
   font: 100%;
-  padding: 0px 0px;
+  padding: 12% 0%;
   cursor: pointer;
   outline: none;
   text-align: center;
@@ -376,7 +376,7 @@ body {
   flex-direction: column;
   height: 100%;
   padding: 0% 0% -1%;
-  gap: 22%; /* 12px */
+  gap: 7%; /* 12px */
 }
 .connect-wallet {
   position: relative;
@@ -398,7 +398,7 @@ body {
   align-items: center;
   justify-content: center;
   gap: 0%; /* 10px */
-  height:16%;
+  height:20%;
   font-size: 100%;
   font-family: var(--font-poppins);
   margin-top: 16px;
@@ -409,7 +409,7 @@ body {
   align-items: center;
   padding: var(--padding-xs) var(--padding-9xs) var(--padding-3xl);;
   justify-content: flex-start;
-  gap: 3%; /* 23px */
+  gap: 4%; /* 23px */
   font-size: 100%;
 }
 
@@ -655,7 +655,8 @@ body {
 .connect-wallet1 {
   position: absolute;
   top: 29%; /* 15px */
-  left: 15%; /* 55px */
+  width: 100%;
+  left: 37%; /* 55px */
   font-size: 80%;
 }
 .rectangle-parent {
@@ -826,11 +827,11 @@ body {
 .col-05,
 .col-051 {
   position: absolute;
-  top: 0%;
-  left: 65%;
+  top: 60.0%;
+  left: 64%;
   border: 1px solid var(--color-gray-400);
-  width: 38%;
-  height: 91%;
+  width: 17%;
+  height: 36.5%;
   flex-direction: column;
 }
 .col-051 {
