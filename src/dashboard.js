@@ -210,6 +210,7 @@ class Dashboard extends React.Component {
       onCancel: () => alert("Request canceled"),
     };
     await getAddress(getAddressOptions);
+    this.fetchContracts();
   };
 
   handleSwapClick = async () => {
@@ -335,13 +336,14 @@ class Dashboard extends React.Component {
         balance: parseFloat(tokenBalances[contract.tick] || '0')
     }));
 
-    balancesArray.sort((a, b) => b.balance - a.balance);
+    balancesArray.sort((a, b) => {
+        if (a.tick === 'btc') return -1; // always put btc at the top
+        if (b.tick === 'btc') return 1;
+        return b.balance - a.balance;
+    });
 
     return (
         <>
-            <div className="table-item9">
-                <div className="portfolio-positions">{btcBalance} BTC</div>
-            </div>
             {balancesArray.map((item, index) => (
                 <div key={index} className="table-item9">
                     <div className="portfolio-positions">
@@ -352,6 +354,7 @@ class Dashboard extends React.Component {
         </>
     );
 }
+
 
   render() {
     console.log("Rendering with Balances: ", this.state.tokenBalances);  // Logging when rendering
@@ -557,52 +560,33 @@ class Dashboard extends React.Component {
                   ))}
                 </div>
 
-                  <div className="table-item5">
-                    <img
-                      className="image-22-icon"
-                      alt=""
-                      src="/image-22@2x.png"
-                    />
-                    <div className="bitcoin-wrapper">
-                    <div className="portfolio-positions">{this.state.tokenBalances['zkbt'] || 'Loading...'} zkbt</div>
-                    </div>
-                  </div>
+
                 </div>
                 <div className="col-05">
                   <div className="table-item4">
                     <div className="name">Balance</div>
                   </div>
-                <div className="table-item9">
-                  <div className="portfolio-positions">{this.state.btcBalance} btc</div>
+                  {this.renderSortedBalances()}
+              </div>
+              <div className="col-051">
+                <div className="table-item4">
+                  <div className="portfolio-positions">
+                    <span className="balance2">Balance</span>
+                    <span className="span1">{` `}</span>
+                  </div>
                 </div>
-                {this.state.contracts && this.state.contracts.map((contract, index) => (
+                <div className="table-item9">
+                  <div className="portfolio-positions">{this.state.btcBalance ? `${this.state.btcBalance} btc` : '0 btc'}</div>
+                </div>
+                {this.state.contracts.map((contract, index) => (
                   <div key={index} className="table-item9">
-                    <div className="portfolio-positions">
-                      {this.state.tokenBalances[contract.tick] || 'Loading...'} {contract.tick}
-                    </div>
+                    <div className="portfolio-positions">{this.state.tokenBalances[contract.tick] || '0'} {contract.tick}</div>
+
                   </div>
                 ))}
-
-                </div>
-                <div className="col-051">
-                  <div className="table-item4">
-                    <div className="portfolio-positions">
-                      <span className="balance2">Balance</span>
-                      <span className="span1">{` `}</span>
-                    </div>
-                  </div>
-                  <div className="table-item9">
-                    <div className="portfolio-positions">{this.state.btcBalance ? `${this.state.btcBalance} btc` : '0 btc'}</div>
-                  </div>
-                  {this.state.contracts.map((contract, index) => (
-                    <div key={index} className="table-item9">
-               <div className="portfolio-positions">{this.state.tokenBalances[contract.tick] || '0'} {contract.tick}</div>
- 
-                    </div>
-                  ))}
-                </div>
-                </div>
               </div>
+            </div>
+          </div>
               <div className="sub-menu">
                 <div className="swap-wrapper">
                   <div className="my-order">Swap</div>
