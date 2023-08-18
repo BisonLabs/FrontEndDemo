@@ -24,13 +24,19 @@ class Dashboard extends React.Component {
       quoteID: "",
       contracts: [],
       tokenBalances: {},
+      selectedToken: 'zkbt',
+      showDropdown: false,
+      activeDropdown:'',
+      selectedTokenForZkbt: 'zkbt',
+      selectedTokenForBtc: 'btc',
+      
     };
     this.balanceInterval = null; // Initialize balance interval
     this.getQuote = this.getQuote.bind(this);
   }
 
   async fetchContracts() {
-    const response = await fetch("http://192.168.254.56:7000/contracts_list");
+    const response = await fetch("http://192.168.254.15:7000/contracts_list");
     const data = await response.json();
     
     // Fetch the balance for each contract
@@ -64,7 +70,43 @@ class Dashboard extends React.Component {
       console.error('Error:', error);
     });
   }
+  toggleDropdown = (dropdownName) => {
+    if (this.state.activeDropdown === dropdownName) {
+      // If the clicked dropdown is already active, just close it
+      this.setState({ showDropdown: false, activeDropdown: '' });
+    } else {
+      // Else, open the clicked dropdown and close any other
+      this.setState({ showDropdown: true, activeDropdown: dropdownName });
+    }
+  };
   
+  renderDropdown(dropdownName) {
+    if (!this.state.showDropdown || this.state.activeDropdown !== dropdownName) return null;
+  
+    let options = [];
+    if (dropdownName === 'zkbt-container') {
+      options = [<option key="zkbt-container-option" value="zkbt-container">Option for zkbt-container</option>];
+    } else {
+      options = [
+        <option value="" disabled key="default-option">Select a token</option>,
+        <option value="btc" key="btc-option">btc</option>,
+        ...this.state.contracts.map((contract, index) => (
+          <option key={index} value={contract.tick}>
+            {contract.tick}
+          </option>
+        ))
+      ];
+    }
+  
+    return (
+      <select
+        value={this.state.selectedToken}
+        onChange={(e) => this.setState({ selectedToken: e.target.value })}
+      >
+        {options}
+      </select>
+    );
+  }
   
   componentDidMount() {
     this.fetchContracts();
@@ -106,7 +148,7 @@ class Dashboard extends React.Component {
     const fastContract = this.state.contracts.find(contract => contract.tick === "fast");
 
     const { swapAmount } = this.state;
-    const response = await fetch("http://192.168.254.56:8000/quote", {
+    const response = await fetch("http://192.168.254.15:8000/quote", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -210,6 +252,7 @@ class Dashboard extends React.Component {
       onCancel: () => alert("Request canceled"),
     };
     await getAddress(getAddressOptions);
+    this.fetchContracts();
   };
 
   handleSwapClick = async () => {
@@ -227,6 +270,7 @@ class Dashboard extends React.Component {
       quoteID: quoteID, // 加入quoteID
       expiry: expiry,
       tick1: tick1,
+      tick: this.state.selectedToken,
       contractAddress1: contractAddress1,
       amount1: amount1,
       tick2: tick2,
@@ -335,13 +379,14 @@ class Dashboard extends React.Component {
         balance: parseFloat(tokenBalances[contract.tick] || '0')
     }));
 
-    balancesArray.sort((a, b) => b.balance - a.balance);
+    balancesArray.sort((a, b) => {
+        if (a.tick === 'btc') return -1; // always put btc at the top
+        if (b.tick === 'btc') return 1;
+        return b.balance - a.balance;
+    });
 
     return (
         <>
-            <div className="table-item9">
-                <div className="portfolio-positions">{btcBalance} BTC</div>
-            </div>
             {balancesArray.map((item, index) => (
                 <div key={index} className="table-item9">
                     <div className="portfolio-positions">
@@ -352,6 +397,7 @@ class Dashboard extends React.Component {
         </>
     );
 }
+
 
   render() {
     console.log("Rendering with Balances: ", this.state.tokenBalances);  // Logging when rendering
@@ -421,8 +467,9 @@ class Dashboard extends React.Component {
                         value={this.state.swapAmount}
                         onChange={this.handleSwapAmountChange}
                       />
-                      <div className="zkbt-group">
+                     <div className="zkbt-group" onClick={() => this.toggleDropdown('zkbt')}>
                         <div className="zkbt1">zkbt</div>
+                        {this.renderDropdown('zkbt')}
                         <img
                           className="iconlylightarrow-down-2"
                           alt=""
@@ -432,15 +479,14 @@ class Dashboard extends React.Component {
                     </div>
                     <div className="btc-parent">
                       <div className="btc">{displayAmount2}</div>
-                      <div className="btc-group">
-                        <div className="zkbt1">fast</div>
-                        <img
-                          className="iconlylightarrow-down-2"
-                          alt=""
-                          src="/iconlylightarrow--down-2.svg"
-                        />
+                      <div className="btc-group" onClick={() => this.toggleDropdown('btc')}>
+
+                        <div className="zkbt1">{this.state.selectedToken}</div>
+                        <img className="iconlylightarrow-down-2" alt="" src="/iconlylightarrow--down-2.svg" />
+                        {this.renderDropdown('btc')}
                       </div>
                     </div>
+
 
                   </div>
                   <div className="connect-wallet-wrapper">
@@ -465,6 +511,7 @@ class Dashboard extends React.Component {
                         placeholder="Address"
                       />
                     </div>
+                    
                     <div className="amount-69-parent">
                       <input
                         type="number"
@@ -473,14 +520,13 @@ class Dashboard extends React.Component {
                         onChange={(e) => this.setState({ amount: e.target.value })}
                         placeholder="Amount"
                       />
-                      <div className="zkbt-container">
-                        <div className="zkbt1">zkbt</div>
-                        <img
-                          className="iconlylightarrow-down-2"
-                          alt=""
-                          src="/iconlylightarrow--down-2.svg"
-                        />
+                      <div className="zkbt-container" onClick={() => this.toggleDropdown('zkbt-container')}>
+
+                        <div className="zkbt1">{this.state.selectedToken}</div>
+                        <img className="iconlylightarrow-down-2" alt="" src="/iconlylightarrow--down-2.svg" />
+                        {this.renderDropdown('zkbt')}
                       </div>
+
                     </div>
                     <div className="text">{`         `}</div>
                   </div>
@@ -557,52 +603,33 @@ class Dashboard extends React.Component {
                   ))}
                 </div>
 
-                  <div className="table-item5">
-                    <img
-                      className="image-22-icon"
-                      alt=""
-                      src="/image-22@2x.png"
-                    />
-                    <div className="bitcoin-wrapper">
-                    <div className="portfolio-positions">{this.state.tokenBalances['zkbt'] || 'Loading...'} zkbt</div>
-                    </div>
-                  </div>
+
                 </div>
                 <div className="col-05">
                   <div className="table-item4">
                     <div className="name">Balance</div>
                   </div>
-                <div className="table-item9">
-                  <div className="portfolio-positions">{this.state.btcBalance} btc</div>
+                  {this.renderSortedBalances()}
+              </div>
+              <div className="col-051">
+                <div className="table-item4">
+                  <div className="portfolio-positions">
+                    <span className="balance2">Balance</span>
+                    <span className="span1">{` `}</span>
+                  </div>
                 </div>
-                {this.state.contracts && this.state.contracts.map((contract, index) => (
+                <div className="table-item9">
+                  <div className="portfolio-positions">{this.state.btcBalance ? `${this.state.btcBalance} btc` : '0 btc'}</div>
+                </div>
+                {this.state.contracts.map((contract, index) => (
                   <div key={index} className="table-item9">
-                    <div className="portfolio-positions">
-                      {this.state.tokenBalances[contract.tick] || 'Loading...'} {contract.tick}
-                    </div>
+                    <div className="portfolio-positions">{this.state.tokenBalances[contract.tick] || '0'} {contract.tick}</div>
+
                   </div>
                 ))}
-
-                </div>
-                <div className="col-051">
-                  <div className="table-item4">
-                    <div className="portfolio-positions">
-                      <span className="balance2">Balance</span>
-                      <span className="span1">{` `}</span>
-                    </div>
-                  </div>
-                  <div className="table-item9">
-                    <div className="portfolio-positions">{this.state.btcBalance ? `${this.state.btcBalance} btc` : '0 btc'}</div>
-                  </div>
-                  {this.state.contracts.map((contract, index) => (
-                    <div key={index} className="table-item9">
-               <div className="portfolio-positions">{this.state.tokenBalances[contract.tick] || '0'} {contract.tick}</div>
- 
-                    </div>
-                  ))}
-                </div>
-                </div>
               </div>
+            </div>
+          </div>
               <div className="sub-menu">
                 <div className="swap-wrapper">
                   <div className="my-order">Swap</div>
