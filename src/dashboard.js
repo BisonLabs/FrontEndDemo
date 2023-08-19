@@ -36,7 +36,7 @@ class Dashboard extends React.Component {
   }
 
   async fetchContracts() {
-    const response = await fetch("http://192.168.254.17:7000/contracts_list");
+    const response = await fetch("http://192.168.254.20:7000/contracts_list");
     const data = await response.json();
 
     // Fetch the balance for each contract
@@ -174,7 +174,7 @@ class Dashboard extends React.Component {
     const fastContract = this.state.contracts.find(contract => contract.tick === "fast");
 
     const { swapAmount } = this.state;
-    const response = await fetch("http://192.168.254.17:8000/quote", {
+    const response = await fetch("http://192.168.254.20:8000/quote", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -282,9 +282,8 @@ class Dashboard extends React.Component {
   };
 
   handleSwapClick = async () => {
-    const { ordinalsAddress, swapAmount, quoteID, selectedSwapToken1, selectedSwapToken2, contracts} = this.state;
+    const { ordinalsAddress, swapAmount, quoteID, selectedSwapToken1, selectedSwapToken2, contracts,amount2} = this.state;
     const amount1 = swapAmount; // Amount entered by the user for swap
-    const amount2 = amount1; // Same as amount1
     const tick1 = selectedSwapToken1;
     const tick2 = selectedSwapToken2;
     const expiry = new Date(new Date().getTime() + 1 * 60000).toISOString(); // Current time + 1 minute
@@ -334,7 +333,7 @@ class Dashboard extends React.Component {
 
   onSwapMessageClick = async (signedMessage) => {
     // Make a HTTP POST request to the specified endpoint
-    await fetch("http://0.0.0.0:8000/swap_make", {
+    await fetch("http://192.168.254.20:8000/swap_make", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -691,7 +690,7 @@ class Dashboard extends React.Component {
           </div>
 
           <div className="table-item18">
-            <div className="portfolio-positions">{this.state.paymentAddress ? '$0.00' : 'Loading...'}</div>
+          <div className="portfolio-positions">{tokenBalances['zkbt'] ? `$${tokenBalances['zkbt'].toFixed(2)}` : 'Loading...'}</div>
           </div>
           <div className="table-item19">
             <div className="portfolio-positions">{tokenBalances['fast'] ? `$${tokenBalances['fast'].toFixed(2)}` : 'Loading...'}</div>
