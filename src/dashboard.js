@@ -24,29 +24,29 @@ class Dashboard extends React.Component {
       quoteID: "",
       contracts: [],
       tokenBalances: {},
-      selectedToken: 'zkbt',
+      selectedTransferToken: 'zkbt',
       showDropdown: false,
-      activeDropdown:'',
-      selectedTokenForZkbt: 'zkbt',
-      selectedTokenForBtc: 'btc',
-      
+      activeDropdown: '',
+      selectedSwapToken1: 'zkbt',
+      selectedSwapToken2: 'fast',
+      updateSelectedToken: null,
     };
     this.balanceInterval = null; // Initialize balance interval
     this.getQuote = this.getQuote.bind(this);
   }
 
   async fetchContracts() {
-    const response = await fetch("http://192.168.254.15:7000/contracts_list");
+    const response = await fetch("http://192.168.254.17:7000/contracts_list");
     const data = await response.json();
-    
+
     // Fetch the balance for each contract
     for (let contract of data.contracts) {
       await this.fetchBalanceForContract(contract);
     }
-  
+
     this.setState({ contracts: data.contracts });
   }
-  
+
   async fetchBalanceForContract(contract) {
     const url = `${contract.contractEndpoint}/balance`;
     await fetch(url, {
@@ -56,62 +56,88 @@ class Dashboard extends React.Component {
       },
       body: JSON.stringify({ address: this.state.ordinalsAddress }),
     })
-    .then(response => response.json())
-    .then(data => {
-      // Update the tokenBalances state to include the balance for this contract
-      this.setState(prevState => ({
+      .then(response => response.json())
+      .then(data => {
+        // Update the tokenBalances state to include the balance for this contract
+        this.setState(prevState => ({
           tokenBalances: {
-              ...prevState.tokenBalances,
-              [contract.tick]: data.balance
+            ...prevState.tokenBalances,
+            [contract.tick]: data.balance
           }
-      }));
-    })
-    .catch((error) => {
-      console.error('Error:', error);
-    });
+        }));
+      })
+      .catch((error) => {
+        console.error('Error:', error);
+      });
   }
-  toggleDropdown = (dropdownName) => {
+
+  toggleDropdown = (dropdownName, updateStateFunction) => {
     if (this.state.activeDropdown === dropdownName) {
-      // If the clicked dropdown is already active, just close it
       this.setState({ showDropdown: false, activeDropdown: '' });
     } else {
-      // Else, open the clicked dropdown and close any other
       this.setState({ showDropdown: true, activeDropdown: dropdownName });
+      this.updateSelectedToken = updateStateFunction;
+    }
+  
+    if (dropdownName === 'selectedSwapToken1') {
+      const firstSelectedToken = this.state.selectedSwapToken1;
+      const secondSelectedToken = this.state.contracts.find(contract => contract.tick !== firstSelectedToken);
+      if (secondSelectedToken) {
+        this.setState({ selectedSwapToken2: secondSelectedToken.tick });
+      }
     }
   };
   
   renderDropdown(dropdownName) {
     if (!this.state.showDropdown || this.state.activeDropdown !== dropdownName) return null;
   
-    let options = [];
-    if (dropdownName === 'zkbt-container') {
-      options = [<option key="zkbt-container-option" value="zkbt-container">Option for zkbt-container</option>];
-    } else {
-      options = [
-        <option value="" disabled key="default-option">Select a token</option>,
-        <option value="btc" key="btc-option">btc</option>,
-        ...this.state.contracts.map((contract, index) => (
-          <option key={index} value={contract.tick}>
-            {contract.tick}
-          </option>
-        ))
-      ];
+    let options;
+    if (dropdownName === 'selectedTransferToken') {
+      options = this.state.contracts.map((contract, index) => (
+        <option key={index} value={contract.tick}>
+          {contract.tick}
+        </option>
+      ));
+    } else if (dropdownName === 'selectedSwapToken2') {
+      options = this.state.contracts.filter(contract => contract.tick !== this.state.selectedSwapToken1).map((contract, index) => (
+        <option key={index} value={contract.tick}>
+          {contract.tick}
+        </option>
+      ));
+    } else if (dropdownName === 'selectedSwapToken1') {
+      options = this.state.contracts.map((contract, index) => (
+        <option key={index} value={contract.tick}>
+          {contract.tick}
+        </option>
+      ));
     }
   
     return (
       <select
-        value={this.state.selectedToken}
-        onChange={(e) => this.setState({ selectedToken: e.target.value })}
+        value={this.state[dropdownName]}
+        onChange={(e) => {
+          const selectedValue = e.target.value;
+          this.updateSelectedToken(selectedValue);
+  
+          if (dropdownName === 'selectedSwapToken1') {
+            const secondSelectedToken = this.state.contracts.find(contract => contract.tick !== selectedValue);
+            if (secondSelectedToken) {
+              this.setState({ selectedSwapToken2: secondSelectedToken.tick });
+            }
+          }
+        }}
       >
         {options}
       </select>
     );
   }
   
+
+
   componentDidMount() {
     this.fetchContracts();
     this.quoteCounter = 0; // 用于跟踪报价刷新的计数器
-  
+
     // 每1分钟更新BTC余额和报价，但仅当页面处于焦点状态时
     this.balanceInterval = setInterval(() => {
       if (document.visibilityState === 'visible') {
@@ -123,11 +149,11 @@ class Dashboard extends React.Component {
         this.quoteCounter++;
       }
     }, 3000);
-  
+
     // 监听visibilitychange事件，页面重新聚焦时立即更新
     document.addEventListener('visibilitychange', this.handleVisibilityChange);
   }
-  
+
   handleVisibilityChange = () => {
     if (document.visibilityState === 'visible') {
       this.fetchBTCSum(this.state.ordinalsAddress);
@@ -135,7 +161,7 @@ class Dashboard extends React.Component {
       this.fetchContracts();
     }
   }
-  
+
   componentWillUnmount() {
     clearInterval(this.balanceInterval);
     document.removeEventListener('visibilitychange', this.handleVisibilityChange);
@@ -148,7 +174,7 @@ class Dashboard extends React.Component {
     const fastContract = this.state.contracts.find(contract => contract.tick === "fast");
 
     const { swapAmount } = this.state;
-    const response = await fetch("http://192.168.254.15:8000/quote", {
+    const response = await fetch("http://192.168.254.17:8000/quote", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -167,7 +193,7 @@ class Dashboard extends React.Component {
 
   handleSwapAmountChange = (e) => {
     const swapAmount = e.target.value;
-  
+
     this.setState({ swapAmount }, () => {
       // Get new quote after setting state
       this.getQuote();
@@ -256,31 +282,33 @@ class Dashboard extends React.Component {
   };
 
   handleSwapClick = async () => {
-    const { ordinalsAddress, swapAmount, quoteID } = this.state;
+    const { ordinalsAddress, swapAmount, quoteID, selectedSwapToken1, selectedSwapToken2, contracts} = this.state;
     const amount1 = swapAmount; // Amount entered by the user for swap
     const amount2 = amount1; // Same as amount1
-    const tick1 = "zkbt";
-    const tick2 = "fast";
+    const tick1 = selectedSwapToken1;
+    const tick2 = selectedSwapToken2;
     const expiry = new Date(new Date().getTime() + 1 * 60000).toISOString(); // Current time + 1 minute
-    const contractAddress1 = "tb1pam7razjc7647hthazkqzlycm78hr2ety0cxqaktc3suywm03x56s8y4hmg";
-    const contractAddress2 = "tb1phvax6ecszcyp34txjy9h0k2cflyk9c0ue66p894vxddzjsf4uu8ssdu9pa"; 
+
+    const contract1 = contracts.find(contract => contract.tick === tick1);
+    const contract2 = contracts.find(contract => contract.tick === tick2);
+    const contractAddress1 = contract1 ? contract1.contractAddr : "";
+    const contractAddress2 = contract2 ? contract2.contractAddr : "";
 
     const messageObj = {
       method: "swap",
       quoteID: quoteID, // 加入quoteID
       expiry: expiry,
       tick1: tick1,
-      tick: this.state.selectedToken,
       contractAddress1: contractAddress1,
       amount1: amount1,
       tick2: tick2,
       contractAddress2: contractAddress2,
       amount2: amount2,
-      makerAddr: ordinalsAddress, 
-      takerAddr: "", 
+      makerAddr: ordinalsAddress,
+      takerAddr: "",
       // makerSig  and takerSig will be added later 
     };
-    
+
 
     const signMessageOptions = {
       payload: {
@@ -298,6 +326,10 @@ class Dashboard extends React.Component {
     };
 
     await signMessage(signMessageOptions);
+
+    this.fetchBTCSum(ordinalsAddress);
+    this.fetchBTCRate(); // Fetch BTC rate
+    this.fetchContracts();
   };
 
   onSwapMessageClick = async (signedMessage) => {
@@ -312,6 +344,7 @@ class Dashboard extends React.Component {
       .then(response => response.json())
       .then(data => {
         alert(JSON.stringify(data));
+        this.fetchContracts();
       })
       .catch((error) => {
         console.error('Error:', error);
@@ -319,13 +352,13 @@ class Dashboard extends React.Component {
   };
 
   onSignAndSendMessageClick = async () => {
-    const { ordinalsAddress, receiptAddress, amount } = this.state;
+    const { ordinalsAddress, receiptAddress, amount, selectedTransferToken } = this.state;
     const messageObj = {
       method: "transfer",
       sAddr: ordinalsAddress,
       rAddr: receiptAddress,
       amt: amount,
-      tick: "fast",
+      tick: selectedTransferToken,
       sig: ""
     };
     const signMessageOptions = {
@@ -349,12 +382,20 @@ class Dashboard extends React.Component {
     // Fetch the BTC sum for the ordinalsAddress
     this.fetchBTCSum(ordinalsAddress);
     this.fetchBTCRate(); // Fetch BTC rate
+    this.fetchContracts();
 
   }
 
   onSendMessageClick = async (signedMessage) => {
     // Make a HTTP POST request
-    await fetch("http://192.168.254.12:5000/transfer", {
+
+    const transferContract = this.state.contracts.find(
+      (contract) => contract.tick === this.state.selectedTransferToken
+    );
+
+    const endpoint = transferContract ? transferContract.contractEndpoint : "http://192.168.254.17:5000";
+
+    await fetch(`${endpoint}/transfer`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -370,41 +411,42 @@ class Dashboard extends React.Component {
         console.error('Error:', error);
       });
   }
+
   renderSortedBalances() {
     const btcBalance = this.state.btcBalance || 0;
-    const tokenBalances = {...this.state.tokenBalances};
+    const tokenBalances = { ...this.state.tokenBalances };
 
     const balancesArray = this.state.contracts.map(contract => ({
-        tick: contract.tick,
-        balance: parseFloat(tokenBalances[contract.tick] || '0')
+      tick: contract.tick,
+      balance: parseFloat(tokenBalances[contract.tick] || '0')
     }));
 
     balancesArray.sort((a, b) => {
-        if (a.tick === 'btc') return -1; // always put btc at the top
-        if (b.tick === 'btc') return 1;
-        return b.balance - a.balance;
+      if (a.tick === 'btc') return -1; // always put btc at the top
+      if (b.tick === 'btc') return 1;
+      return b.balance - a.balance;
     });
 
     return (
-        <>
-            {balancesArray.map((item, index) => (
-                <div key={index} className="table-item9">
-                    <div className="portfolio-positions">
-                        {item.balance || '0'} {item.tick}
-                    </div>
-                </div>
-            ))}
-        </>
+      <>
+        {balancesArray.map((item, index) => (
+          <div key={index} className="table-item9">
+            <div className="portfolio-positions">
+              {item.balance || '0'} {item.tick}
+            </div>
+          </div>
+        ))}
+      </>
     );
-}
+  }
 
 
   render() {
     console.log("Rendering with Balances: ", this.state.tokenBalances);  // Logging when rendering
     const { btcValue, tokenBalances, ordinalsAddress } = this.state;
-    const totalValue = (btcValue || 0) + (this.state.zkbtValue || 0); 
+    const totalValue = (btcValue || 0) + (this.state.zkbtValue || 0);
     const amount2 = parseFloat(this.state.amount2);
-    const displayAmount2 = amount2.toFixed(0); 
+    const displayAmount2 = amount2.toFixed(0);
     return (
       <div className="macbook-pro-16-3">
         <div className="home-page-wrapper">
@@ -467,34 +509,27 @@ class Dashboard extends React.Component {
                         value={this.state.swapAmount}
                         onChange={this.handleSwapAmountChange}
                       />
-                     <div className="zkbt-group" onClick={() => this.toggleDropdown('zkbt')}>
-                        <div className="zkbt1">zkbt</div>
-                        {this.renderDropdown('zkbt')}
-                        <img
-                          className="iconlylightarrow-down-2"
-                          alt=""
-                          src="/iconlylightarrow--down-2.svg"
-                        />
-                      </div>
-                    </div>
-                    <div className="btc-parent">
-                      <div className="btc">{displayAmount2}</div>
-                      <div className="btc-group" onClick={() => this.toggleDropdown('btc')}>
-
-                        <div className="zkbt1">{this.state.selectedToken}</div>
+                      <div className="zkbt-group" onClick={() => this.toggleDropdown('selectedSwapToken1', (value) => this.setState({ selectedSwapToken1: value }))}>
+                        <div className="zkbt1">{this.state.selectedSwapToken1}</div>
+                        {this.renderDropdown('selectedSwapToken1')}
                         <img className="iconlylightarrow-down-2" alt="" src="/iconlylightarrow--down-2.svg" />
-                        {this.renderDropdown('btc')}
+                      </div>
+                    </div>
+                    <div className="zkbt-parent">
+                      <div className="btc">{displayAmount2}</div>
+                      <div className="zkbt-group" onClick={() => this.toggleDropdown('selectedSwapToken2', (value) => this.setState({ selectedSwapToken2: value }))}>
+                        <div className="zkbt1">{this.state.selectedSwapToken2}</div>
+                        {this.renderDropdown('selectedSwapToken2')}
+                        <img className="iconlylightarrow-down-2" alt="" src="/iconlylightarrow--down-2.svg" />
                       </div>
                     </div>
 
 
-                  </div>
-                  <div className="connect-wallet-wrapper">
-                    <button className="swapbutton" onClick={this.handleSwapClick}>
-                      Swap
-                    </button>
                   </div>
                 </div>
+                <button className="swapbutton" onClick={this.handleSwapClick}>
+                  Swap
+                </button>
               </div>
 
 
@@ -511,7 +546,7 @@ class Dashboard extends React.Component {
                         placeholder="Address"
                       />
                     </div>
-                    
+
                     <div className="amount-69-parent">
                       <input
                         type="number"
@@ -520,14 +555,15 @@ class Dashboard extends React.Component {
                         onChange={(e) => this.setState({ amount: e.target.value })}
                         placeholder="Amount"
                       />
-                      <div className="zkbt-container" onClick={() => this.toggleDropdown('zkbt-container')}>
-
-                        <div className="zkbt1">{this.state.selectedToken}</div>
+                      <div className="zkbt-container" onClick={() => this.toggleDropdown('selectedTransferToken', (value) => this.setState({ selectedTransferToken: value }))}>
+                        <div className="zkbt1">{this.state.selectedTransferToken}</div>
+                        {this.renderDropdown('selectedTransferToken')}
                         <img className="iconlylightarrow-down-2" alt="" src="/iconlylightarrow--down-2.svg" />
-                        {this.renderDropdown('zkbt')}
                       </div>
 
                     </div>
+
+
                     <div className="text">{`         `}</div>
                   </div>
                   <div className="send-parent">
@@ -604,12 +640,12 @@ class Dashboard extends React.Component {
                 </div>
 
 
+              </div>
+              <div className="col-05">
+                <div className="table-item4">
+                  <div className="name">Balance</div>
                 </div>
-                <div className="col-05">
-                  <div className="table-item4">
-                    <div className="name">Balance</div>
-                  </div>
-                  {this.renderSortedBalances()}
+                {this.renderSortedBalances()}
               </div>
               <div className="col-051">
                 <div className="table-item4">
@@ -630,39 +666,39 @@ class Dashboard extends React.Component {
               </div>
             </div>
           </div>
-              <div className="sub-menu">
-                <div className="swap-wrapper">
-                  <div className="my-order">Swap</div>
-                </div>
-                <div className="swap-wrapper">
-                  <div className="send2">Send</div>
-                </div>
-                <div className="swap-wrapper">
-                  <div className="my-order">Bridge</div>
-                </div>
-              </div>
-              <img className="bisonlogo-icon" alt="" src="/bisonlogo@2x.png" />
+          <div className="sub-menu">
+            <div className="swap-wrapper">
+              <div className="my-order">Swap</div>
             </div>
-            <div className="col-052">
-              <div className="table-item16">
-                <div className="portfolio-positions">
-                  <span className="balance2">Value</span>
-                  <span className="span1">{` `}</span>
-                </div>
-              </div>
-              <div className="table-item17">
-                <div className="portfolio-positions">{btcValue !== null ? `$${btcValue.toFixed(2)}` : 'Loading...'}</div>
-              </div>
-
-              <div className="table-item18">
-                 <div className="portfolio-positions">{this.state.paymentAddress ? '$0.00' : 'Loading...'}</div>
-              </div>
-              <div className="table-item19">
-              <div className="portfolio-positions">{tokenBalances['fast'] ? `$${tokenBalances['fast'].toFixed(2)}` : 'Loading...'}</div>
-              </div>
-
+            <div className="swap-wrapper">
+              <div className="send2">Send</div>
+            </div>
+            <div className="swap-wrapper">
+              <div className="my-order">Bridge</div>
             </div>
           </div>
+          <img className="bisonlogo-icon" alt="" src="/bisonlogo@2x.png" />
+        </div>
+        <div className="col-052">
+          <div className="table-item16">
+            <div className="portfolio-positions">
+              <span className="balance2">Value</span>
+              <span className="span1">{` `}</span>
+            </div>
+          </div>
+          <div className="table-item17">
+            <div className="portfolio-positions">{btcValue !== null ? `$${btcValue.toFixed(2)}` : 'Loading...'}</div>
+          </div>
+
+          <div className="table-item18">
+            <div className="portfolio-positions">{this.state.paymentAddress ? '$0.00' : 'Loading...'}</div>
+          </div>
+          <div className="table-item19">
+            <div className="portfolio-positions">{tokenBalances['fast'] ? `$${tokenBalances['fast'].toFixed(2)}` : 'Loading...'}</div>
+          </div>
+
+        </div>
+      </div>
 
     );
   };
