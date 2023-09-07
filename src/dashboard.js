@@ -31,12 +31,13 @@ class Dashboard extends React.Component {
       selectedSwapToken2: 'fast',
       updateSelectedToken: null,
     };
+    this.BISON_SEQUENCER_ENDPOINT = "http://127.0.0.1:8008"; // 请替换为您的实际BisonSequencerEndpoint
     this.balanceInterval = null; // Initialize balance interval
     this.getQuote = this.getQuote.bind(this);
   }
 
   async fetchContracts() {
-    const response = await fetch("http://192.168.254.20:7000/contracts_list");
+    const response = await fetch("http://127.0.0.1:8008/contracts_list");
     const data = await response.json();
 
     // Fetch the balance for each contract
@@ -48,6 +49,11 @@ class Dashboard extends React.Component {
   }
 
   async fetchBalanceForContract(contract) {
+    // 如果contractType不为Token，则直接返回
+    if (contract.contractType !== "Token") {
+        return;
+    }
+
     const url = `${contract.contractEndpoint}/balance`;
     await fetch(url, {
       method: "POST",
@@ -69,7 +75,8 @@ class Dashboard extends React.Component {
       .catch((error) => {
         console.error('Error:', error);
       });
-  }
+}
+
 
   toggleDropdown = (dropdownName, updateStateFunction) => {
     if (this.state.activeDropdown === dropdownName) {
@@ -86,6 +93,7 @@ class Dashboard extends React.Component {
         this.setState({ selectedSwapToken2: secondSelectedToken.tick });
       }
     }
+    this.getQuote();
   };
   
   renderDropdown(dropdownName) {
@@ -169,27 +177,26 @@ class Dashboard extends React.Component {
 
   async getQuote() {
     if (this.state.contracts.length === 0) return;
-
-    const zkbtContract = this.state.contracts.find(contract => contract.tick === "zkbt");
-    const fastContract = this.state.contracts.find(contract => contract.tick === "fast");
-
-    const { swapAmount } = this.state;
-    const response = await fetch("http://192.168.254.20:8000/quote", {
+  
+    const { selectedSwapToken1, selectedSwapToken2, swapAmount } = this.state;
+  
+    const response = await fetch("http://127.0.0.1:8000/quote", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        tick1: zkbtContract.tick,
-        tick2: fastContract.tick,
-        contractAddress1: zkbtContract.contractAddr,
-        contractAddress2: fastContract.contractAddr,
+        tick1: selectedSwapToken1,
+        tick2: selectedSwapToken2,
+        contractAddress1: this.state.contracts.find(contract => contract.tick === selectedSwapToken1).contractAddr,
+        contractAddress2: this.state.contracts.find(contract => contract.tick === selectedSwapToken2).contractAddr,
         amount1: swapAmount,
       }),
     });
     const data = await response.json();
     this.setState({ amount2: data.amount2, quoteID: data.id });
   }
+  
 
   handleSwapAmountChange = (e) => {
     const swapAmount = e.target.value;
@@ -333,7 +340,7 @@ class Dashboard extends React.Component {
 
   onSwapMessageClick = async (signedMessage) => {
     // Make a HTTP POST request to the specified endpoint
-    await fetch("http://192.168.254.20:8000/swap_make", {
+    await fetch("http://192.168.254.55:8000/swap_make", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -350,16 +357,39 @@ class Dashboard extends React.Component {
       });
   };
 
+  
   onSignAndSendMessageClick = async () => {
     const { ordinalsAddress, receiptAddress, amount, selectedTransferToken } = this.state;
+
+    // 获取 nonce
+    const nonceResponse = await fetch(`${this.BISON_SEQUENCER_ENDPOINT}/nonce/${ordinalsAddress}`);
+    const nonceData = await nonceResponse.json();
+    const nonce = nonceData.nonce + 1; // 确保从JSON响应中正确地获取nonce值
+
     const messageObj = {
       method: "transfer",
       sAddr: ordinalsAddress,
       rAddr: receiptAddress,
       amt: amount,
       tick: selectedTransferToken,
+      nonce: nonce,
       sig: ""
     };
+
+    // 先将messageObj发送到/gas_meter以获取gas数据
+    const gasResponse = await fetch(`${this.BISON_SEQUENCER_ENDPOINT}/gas_meter`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(messageObj),
+    });
+    const gasData = await gasResponse.json();
+
+    // 更新messageObj以包含gas数据
+    messageObj.gas_estimated = gasData.gas_estimated;
+    messageObj.gas_estimated_hash = gasData.gas_estimated_hash;
+
     const signMessageOptions = {
       payload: {
         network: {
@@ -374,7 +404,9 @@ class Dashboard extends React.Component {
       },
       onCancel: () => alert("Canceled"),
     };
+
     await signMessage(signMessageOptions);
+
     // Fetch the balance for the existing method (if needed)
     this.fetchBalance(ordinalsAddress);
 
@@ -382,19 +414,12 @@ class Dashboard extends React.Component {
     this.fetchBTCSum(ordinalsAddress);
     this.fetchBTCRate(); // Fetch BTC rate
     this.fetchContracts();
+}
 
-  }
-
-  onSendMessageClick = async (signedMessage) => {
-    // Make a HTTP POST request
-
-    const transferContract = this.state.contracts.find(
-      (contract) => contract.tick === this.state.selectedTransferToken
-    );
-
-    const endpoint = transferContract ? transferContract.contractEndpoint : "http://192.168.254.17:5000";
-
-    await fetch(`${endpoint}/transfer`, {
+  
+onSendMessageClick = async (signedMessage) => {
+  // Make a HTTP POST request to /enqueue_transaction
+    await fetch(`${this.BISON_SEQUENCER_ENDPOINT}/enqueue_transaction`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -410,6 +435,7 @@ class Dashboard extends React.Component {
         console.error('Error:', error);
       });
   }
+
 
   renderSortedBalances() {
     const btcBalance = this.state.btcBalance || 0;
