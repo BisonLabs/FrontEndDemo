@@ -51,7 +51,7 @@ class Dashboard extends React.Component {
   async fetchBalanceForContract(contract) {
     // 如果contractType不为Token，则直接返回
     if (contract.contractType !== "Token") {
-        return;
+      return;
     }
 
     const url = `${contract.contractEndpoint}/balance`;
@@ -75,7 +75,7 @@ class Dashboard extends React.Component {
       .catch((error) => {
         console.error('Error:', error);
       });
-}
+  }
 
 
   toggleDropdown = (dropdownName, updateStateFunction) => {
@@ -85,7 +85,7 @@ class Dashboard extends React.Component {
       this.setState({ showDropdown: true, activeDropdown: dropdownName });
       this.updateSelectedToken = updateStateFunction;
     }
-  
+
     if (dropdownName === 'selectedSwapToken1') {
       const firstSelectedToken = this.state.selectedSwapToken1;
       const secondSelectedToken = this.state.contracts.find(contract => contract.tick !== firstSelectedToken);
@@ -95,10 +95,10 @@ class Dashboard extends React.Component {
     }
     this.getQuote();
   };
-  
+
   renderDropdown(dropdownName) {
     if (!this.state.showDropdown || this.state.activeDropdown !== dropdownName) return null;
-  
+
     let options;
     if (dropdownName === 'selectedTransferToken') {
       options = this.state.contracts.map((contract, index) => (
@@ -119,14 +119,14 @@ class Dashboard extends React.Component {
         </option>
       ));
     }
-  
+
     return (
       <select
         value={this.state[dropdownName]}
         onChange={(e) => {
           const selectedValue = e.target.value;
           this.updateSelectedToken(selectedValue);
-  
+
           if (dropdownName === 'selectedSwapToken1') {
             const secondSelectedToken = this.state.contracts.find(contract => contract.tick !== selectedValue);
             if (secondSelectedToken) {
@@ -139,7 +139,7 @@ class Dashboard extends React.Component {
       </select>
     );
   }
-  
+
 
 
   componentDidMount() {
@@ -177,9 +177,9 @@ class Dashboard extends React.Component {
 
   async getQuote() {
     if (this.state.contracts.length === 0) return;
-  
+
     const { selectedSwapToken1, selectedSwapToken2, swapAmount } = this.state;
-  
+
     const response = await fetch("http://127.0.0.1:8000/quote", {
       method: "POST",
       headers: {
@@ -196,7 +196,7 @@ class Dashboard extends React.Component {
     const data = await response.json();
     this.setState({ amount2: data.amount2, quoteID: data.id });
   }
-  
+
 
   handleSwapAmountChange = (e) => {
     const swapAmount = e.target.value;
@@ -289,20 +289,24 @@ class Dashboard extends React.Component {
   };
 
   handleSwapClick = async () => {
-    const { ordinalsAddress, swapAmount, quoteID, selectedSwapToken1, selectedSwapToken2, contracts,amount2} = this.state;
-    const amount1 = swapAmount; // Amount entered by the user for swap
+    const { ordinalsAddress, swapAmount, selectedSwapToken1, selectedSwapToken2, contracts, amount2 } = this.state;
+    const amount1 = swapAmount;
     const tick1 = selectedSwapToken1;
     const tick2 = selectedSwapToken2;
-    const expiry = new Date(new Date().getTime() + 1 * 60000).toISOString(); // Current time + 1 minute
+    const expiry = new Date(new Date().getTime() + 1 * 60000).toISOString();
 
     const contract1 = contracts.find(contract => contract.tick === tick1);
     const contract2 = contracts.find(contract => contract.tick === tick2);
     const contractAddress1 = contract1 ? contract1.contractAddr : "";
     const contractAddress2 = contract2 ? contract2.contractAddr : "";
 
+    // 获取 nonce
+    const nonceResponse = await fetch(`${this.BISON_SEQUENCER_ENDPOINT}/nonce/${ordinalsAddress}`);
+    const nonceData = await nonceResponse.json();
+    const nonce = nonceData.nonce + 1;
+
     const messageObj = {
       method: "swap",
-      quoteID: quoteID, // 加入quoteID
       expiry: expiry,
       tick1: tick1,
       contractAddress1: contractAddress1,
@@ -312,9 +316,25 @@ class Dashboard extends React.Component {
       amount2: amount2,
       makerAddr: ordinalsAddress,
       takerAddr: "",
-      // makerSig  and takerSig will be added later 
+      nonce: nonce,
+      slippage: 0.02,
+      makerSig: "",
+      takerSig: ""
     };
 
+    // 先将messageObj发送到/gas_meter以获取gas数据
+    const gasResponse = await fetch(`${this.BISON_SEQUENCER_ENDPOINT}/gas_meter`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(messageObj),
+    });
+    const gasData = await gasResponse.json();
+
+    // 更新messageObj以包含gas数据
+    messageObj.gas_estimated = gasData.gas_estimated;
+    messageObj.gas_estimated_hash = gasData.gas_estimated_hash;
 
     const signMessageOptions = {
       payload: {
@@ -325,8 +345,8 @@ class Dashboard extends React.Component {
         message: JSON.stringify(messageObj),
       },
       onFinish: (response) => {
-        messageObj.makerSig = response; // Embed the signature into the JSON
-        this.onSwapMessageClick(messageObj); // Sending the signed message
+        messageObj.makerSig = response;
+        this.onSwapMessageClick(messageObj);
       },
       onCancel: () => alert("Swap canceled"),
     };
@@ -334,13 +354,14 @@ class Dashboard extends React.Component {
     await signMessage(signMessageOptions);
 
     this.fetchBTCSum(ordinalsAddress);
-    this.fetchBTCRate(); // Fetch BTC rate
+    this.fetchBTCRate();
     this.fetchContracts();
-  };
+};
+
 
   onSwapMessageClick = async (signedMessage) => {
-    // Make a HTTP POST request to the specified endpoint
-    await fetch("http://192.168.254.55:8000/swap_make", {
+    // Make a HTTP POST request to /enqueue_transaction
+    await fetch(`${this.BISON_SEQUENCER_ENDPOINT}/enqueue_transaction`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -357,9 +378,19 @@ class Dashboard extends React.Component {
       });
   };
 
-  
+
   onSignAndSendMessageClick = async () => {
-    const { ordinalsAddress, receiptAddress, amount, selectedTransferToken } = this.state;
+    const { ordinalsAddress, receiptAddress, amount, selectedTransferToken, contracts } = this.state;
+
+
+
+    // 从contracts数组中找到与selectedTransferToken匹配的合约
+    const selectedContract = contracts.find(contract => contract.tick === selectedTransferToken);
+    if (!selectedContract) {
+      console.error('No contract found for the selected token.');
+      return;
+    }
+
 
     // 获取 nonce
     const nonceResponse = await fetch(`${this.BISON_SEQUENCER_ENDPOINT}/nonce/${ordinalsAddress}`);
@@ -373,6 +404,7 @@ class Dashboard extends React.Component {
       amt: amount,
       tick: selectedTransferToken,
       nonce: nonce,
+      tokenContractAddress: selectedContract.contractAddr, // 添加tokenContractAddress
       sig: ""
     };
 
@@ -414,11 +446,11 @@ class Dashboard extends React.Component {
     this.fetchBTCSum(ordinalsAddress);
     this.fetchBTCRate(); // Fetch BTC rate
     this.fetchContracts();
-}
+  }
 
-  
-onSendMessageClick = async (signedMessage) => {
-  // Make a HTTP POST request to /enqueue_transaction
+
+  onSendMessageClick = async (signedMessage) => {
+    // Make a HTTP POST request to /enqueue_transaction
     await fetch(`${this.BISON_SEQUENCER_ENDPOINT}/enqueue_transaction`, {
       method: "POST",
       headers: {
@@ -716,7 +748,7 @@ onSendMessageClick = async (signedMessage) => {
           </div>
 
           <div className="table-item18">
-          <div className="portfolio-positions">{tokenBalances['zkbt'] ? `$${tokenBalances['zkbt'].toFixed(2)}` : 'Loading...'}</div>
+            <div className="portfolio-positions">{tokenBalances['zkbt'] ? `$${tokenBalances['zkbt'].toFixed(2)}` : 'Loading...'}</div>
           </div>
           <div className="table-item19">
             <div className="portfolio-positions">{tokenBalances['fast'] ? `$${tokenBalances['fast'].toFixed(2)}` : 'Loading...'}</div>
